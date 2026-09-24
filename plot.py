@@ -38,15 +38,29 @@ for item in items:
                 graph.add_edge(a, b, weight=1)
 
 labels = {handle: names.get(handle, handle) for handle in graph.nodes}
-weights = [graph[a][b]["weight"] for a, b in graph.edges]
 
-plt.figure(figsize=(20, 20))
-pos = nx.spring_layout(graph, seed=0, k=1.5 / len(graph.nodes) ** 0.5, iterations=100)
-nx.draw_networkx_nodes(graph, pos, node_color="#2a78d6", node_size=200)
-nx.draw_networkx_edges(graph, pos, width=weights, alpha=0.5)
-nx.draw_networkx_labels(graph, pos, labels, font_size=7)
+components = sorted(nx.connected_components(graph), key=len, reverse=True)
+widths = [max(len(component) ** 0.5, 1) for component in components]
 
-plt.title(f"Player connections - {event_name}")
-plt.axis("off")
-plt.savefig("player_connections.png", dpi=200, bbox_inches="tight")
+fig, axes = plt.subplots(1, len(components), figsize=(20, 12), gridspec_kw={"width_ratios": widths})
+if len(components) == 1:
+    axes = [axes]
+
+for ax, component in zip(axes, components):
+    subgraph = graph.subgraph(component)
+    sub_weights = [subgraph[a][b]["weight"] for a, b in subgraph.edges]
+    pos = nx.spring_layout(subgraph, seed=0, k=3 / len(component) ** 0.5, iterations=200)
+
+    nx.draw_networkx_nodes(subgraph, pos, node_color="#2a78d6", node_size=250, ax=ax)
+    nx.draw_networkx_edges(subgraph, pos, width=sub_weights, alpha=0.4, ax=ax)
+    sub_labels = {node: labels[node] for node in component}
+    nx.draw_networkx_labels(
+        subgraph, pos, sub_labels, font_size=7, ax=ax,
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.7, "pad": 0},
+    )
+    ax.axis("off")
+
+fig.suptitle(f"Player connections - {event_name}")
+fig.tight_layout()
+fig.savefig("player_connections.png", dpi=200, bbox_inches="tight")
 plt.show()
